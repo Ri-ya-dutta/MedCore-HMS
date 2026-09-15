@@ -1,4 +1,5 @@
-const express = require("express");
+import express from "express";
+import { db } from "./prisma/db.ts";
 
 const app = express();
 
@@ -6,8 +7,25 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
     res.json({
-        message:"MedCore HMS API is running!"
+        message: "MedCore HMS API is running!"
     });
 });
 
-module.exports = app;
+app.get("/db-test", async (req, res) => {
+    try {
+        const users = await db.orm.public.User.all();
+
+        res.json({
+            message: "Database connection successful!",
+            users
+        });
+    } catch (error) {
+        console.error("Database test failed:", error);
+
+        res.status(500).json({
+            message: "Database connection failed"
+        });
+    }
+});
+
+export default app;

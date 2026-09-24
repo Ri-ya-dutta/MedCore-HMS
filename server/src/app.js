@@ -1,6 +1,7 @@
 import express from "express";
 import { db } from "./prisma/db.ts";
 import authRoutes from "./routes/authRoutes.js";
+import patientRoutes from "./routes/patientRoutes.js";
 
 
 const app = express();
@@ -8,6 +9,7 @@ const app = express();
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/patients", patientRoutes);
 
 app.get("/", (req, res) => {
     res.json({

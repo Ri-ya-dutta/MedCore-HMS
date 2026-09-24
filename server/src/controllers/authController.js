@@ -138,3 +138,10 @@ export const getMe = async (req, res) => {
         });
     }
 };
+
+export const adminTest = async (req, res) => {
+    return res.status(200).json({
+        message: "Admin access granted",
+        user: req.user,
+    });
+};

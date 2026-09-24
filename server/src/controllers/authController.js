@@ -1,9 +1,10 @@
 import { 
     registerUser,
     loginUser
- } from "../services/authService.js";
+} from "../services/authService.js";
 
  import { generateToken } from "../utils/jwt.js";
+ import { db } from "../prisma/db.ts";
 
 export const register = async (req, res) => {
     try {
@@ -103,6 +104,37 @@ export const login = async (req, res) => {
 
         return res.status(500).json({
             message: "Login failed",
+        });
+    }
+};
+
+
+export const getMe = async (req, res) => {
+    try {
+        const user = await db.orm.public.User
+            .where({ id: req.user.id })
+            .first();
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found",
+            });
+        }
+
+        return res.status(200).json({
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+            },
+        });
+    } catch (error) {
+        console.error("Get current user error:", error);
+
+        return res.status(500).json({
+            message: "Failed to fetch user",
         });
     }
 };

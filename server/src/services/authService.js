@@ -32,3 +32,38 @@ export const registerUser = async ({ email, password }) => {
         createdAt: user.createdAt,
     };
 };
+
+
+
+export const loginUser = async ({ email, password }) => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await db.orm.public.User
+        .where({ email: normalizedEmail })
+        .first();
+
+    if (!user) {
+        const error = new Error("Invalid credentials");
+        error.code = "INVALID_CREDENTIALS";
+        throw error;
+    }
+
+    if (!user.isActive) {
+        const error = new Error("Account is inactive");
+        error.code = "ACCOUNT_INACTIVE";
+        throw error;
+    }
+
+    const passwordMatches = await bcrypt.compare(
+        password,
+        user.passwordHash
+    );
+
+    if (!passwordMatches) {
+        const error = new Error("Invalid credentials");
+        error.code = "INVALID_CREDENTIALS";
+        throw error;
+    }
+
+    return user;
+};

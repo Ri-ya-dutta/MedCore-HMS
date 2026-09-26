@@ -1,4 +1,7 @@
-import { createPatient } from "../services/patientService.js";
+import {
+    createPatient,
+    getPatientById
+} from "../services/patientService.js";
 
 export const createPatientController = async (req, res) => {
     try {
@@ -72,6 +75,46 @@ export const createPatientController = async (req, res) => {
 
         return res.status(500).json({
             message: "Failed to create patient"
+        });
+    }
+};
+
+export const getPatientByIdController = async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "Invalid patient ID"
+            });
+        }
+
+        const patient = await getPatientById(id);
+
+        if (!patient) {
+            return res.status(404).json({
+                message: "Patient not found"
+            });
+        }
+
+        // Patients can only view their own patient profile.
+        if (
+            req.user.role === "PATIENT" &&
+            patient.userId !== req.user.id
+        ) {
+            return res.status(403).json({
+                message: "Access denied"
+            });
+        }
+
+        return res.status(200).json({
+            patient
+        });
+    } catch (error) {
+        console.error("Get patient error:", error);
+
+        return res.status(500).json({
+            message: "Failed to fetch patient"
         });
     }
 };

@@ -27,3 +27,11 @@ export const createPatient = async ({
 
     return patient;
 };
+
+export const getPatientById = async (id) => {
+    const patient = await db.orm.public.Patient
+        .where({ id })
+        .first();
+
+    return patient;
+};

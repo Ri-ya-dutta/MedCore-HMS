@@ -1,6 +1,9 @@
 import express from "express";
 
-import { createPatientController } from "../controllers/patientController.js";
+import {
+    createPatientController,
+    getPatientByIdController
+} from "../controllers/patientController.js";
 
 import {
     authenticate,
@@ -14,6 +17,11 @@ router.post(
     authenticate,
     authorizeRoles("ADMIN", "RECEPTIONIST"),
     createPatientController
+);
+router.get(
+    "/:id",
+    authenticate,
+    getPatientByIdController
 );
 
 export default router;

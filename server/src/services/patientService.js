@@ -35,3 +35,64 @@ export const getPatientById = async (id) => {
 
     return patient;
 };
+
+export const updatePatient = async (
+    id,
+    {
+        firstName,
+        lastName,
+        dateOfBirth,
+        gender,
+        phone,
+        email,
+        address,
+        emergencyContact,
+        bloodGroup
+    }
+) => {
+    const patient = await db.orm.public.Patient
+        .where({ id })
+        .first();
+
+    if (!patient) {
+        return null;
+    }
+
+    const updatedPatient = await db.orm.public.Patient.update(
+        { id },
+        {
+            firstName: firstName ?? patient.firstName,
+            lastName: lastName ?? patient.lastName,
+            dateOfBirth: dateOfBirth
+                ? Temporal.Instant.from(`${dateOfBirth}T00:00:00Z`)
+                : patient.dateOfBirth,
+            gender: gender ?? patient.gender,
+            phone: phone ?? patient.phone,
+            email: email ?? patient.email,
+            address: address ?? patient.address,
+            emergencyContact: emergencyContact ?? patient.emergencyContact,
+            bloodGroup: bloodGroup ?? patient.bloodGroup
+        }
+    );
+
+    return updatedPatient;
+};
+
+export const getPatients = async (search) => {
+    const patients = await db.orm.public.Patient.all();
+
+    if (!search) {
+        return patients;
+    }
+
+    const normalizedSearch = search.toLowerCase();
+
+    return patients.filter((patient) => {
+        return (
+            patient.firstName.toLowerCase().includes(normalizedSearch) ||
+            patient.lastName.toLowerCase().includes(normalizedSearch) ||
+            patient.phone.toLowerCase().includes(normalizedSearch) ||
+            patient.email?.toLowerCase().includes(normalizedSearch)
+        );
+    });
+};

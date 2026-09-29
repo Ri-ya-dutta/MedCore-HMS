@@ -2,7 +2,9 @@ import express from "express";
 
 import {
     createPatientController,
-    getPatientByIdController
+    getPatientByIdController,
+    updatePatientController,
+    getPatientsController
 } from "../controllers/patientController.js";
 
 import {
@@ -18,10 +20,29 @@ router.post(
     authorizeRoles("ADMIN", "RECEPTIONIST"),
     createPatientController
 );
+
+router.get(
+    "/",
+    authenticate,
+    authorizeRoles("ADMIN", "RECEPTIONIST", "DOCTOR"),
+    getPatientsController
+);
+
 router.get(
     "/:id",
     authenticate,
     getPatientByIdController
+);
+
+router.put(
+    "/:id",
+    authenticate,
+    authorizeRoles(
+        "ADMIN",
+        "RECEPTIONIST",
+        "PATIENT"
+    ),
+    updatePatientController
 );
 
 export default router;

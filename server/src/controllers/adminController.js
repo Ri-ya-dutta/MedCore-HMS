@@ -16,7 +16,8 @@ import {
 
     createDoctor,
     getDoctors,
-    updateDoctor
+    updateDoctor,
+    linkPatientToUser
 } from "../services/adminService.js";
 
 
@@ -634,6 +635,74 @@ export const updateDoctorController = async (req, res) => {
 
         return res.status(500).json({
             message: "Failed to update doctor"
+        });
+    }
+};
+
+export const linkPatientToUserController = async (req, res) => {
+    try {
+        const patientId = Number(req.params.patientId);
+        const { userId } = req.body;
+
+        if (!Number.isInteger(patientId)) {
+            return res.status(400).json({
+                message: "Invalid patient ID"
+            });
+        }
+
+        if (!Number.isInteger(userId)) {
+            return res.status(400).json({
+                message: "userId must be an integer"
+            });
+        }
+
+        const patient = await linkPatientToUser(
+            patientId,
+            userId
+        );
+
+        return res.status(200).json({
+            message: "Patient account linked successfully",
+            patient
+        });
+    } catch (error) {
+        console.error(
+            "Link patient account error:",
+            error
+        );
+
+        if (error.code === "PATIENT_NOT_FOUND") {
+            return res.status(404).json({
+                message: error.message
+            });
+        }
+
+        if (error.code === "USER_NOT_FOUND") {
+            return res.status(404).json({
+                message: error.message
+            });
+        }
+
+        if (
+            error.code === "INVALID_USER_ROLE" ||
+            error.code === "USER_INACTIVE"
+        ) {
+            return res.status(400).json({
+                message: error.message
+            });
+        }
+
+        if (
+            error.code === "PATIENT_ALREADY_LINKED" ||
+            error.code === "USER_ALREADY_LINKED"
+        ) {
+            return res.status(409).json({
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
+            message: "Failed to link patient account"
         });
     }
 };

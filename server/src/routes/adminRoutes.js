@@ -18,7 +18,8 @@ import {
     updateUserStatusController,
     createDoctorController,
     getDoctorsController,
-    updateDoctorController
+    updateDoctorController,
+    linkPatientToUserController
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -98,4 +99,10 @@ router.put(
     updateDoctorController
 );
 
+router.put(
+    "/patients/:patientId/link-user",
+    linkPatientToUserController
+);
+
 export default router;
+

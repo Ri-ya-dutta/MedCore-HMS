@@ -62,6 +62,19 @@ export const getPatientById = async (id) => {
     return result.rows[0] || null;
 };
 
+export const getPatientByUserId = async (userId) => {
+    const result = await pool.query(
+        `
+        SELECT *
+        FROM patient
+        WHERE "userId" = $1
+        `,
+        [userId]
+    );
+
+    return result.rows[0] || null;
+};
+
 export const updatePatient = async (
     id,
     {
@@ -155,4 +168,109 @@ export const getPatients = async (search) => {
     const result = await pool.query(query, values);
 
     return result.rows;
+};
+
+export const linkPatientToUser = async (patientId, userId) => {
+    // Check patient exists
+    const patientResult = await pool.query(
+        `
+        SELECT *
+        FROM patient
+        WHERE id = $1
+        `,
+        [patientId]
+    );
+
+    const patient = patientResult.rows[0];
+
+    if (!patient) {
+        const error = new Error("Patient not found");
+        error.code = "PATIENT_NOT_FOUND";
+        throw error;
+    }
+
+    // Check user exists and is a PATIENT
+    const userResult = await pool.query(
+        `
+        SELECT
+            id,
+            email,
+            role,
+            "isActive"
+        FROM "user"
+        WHERE id = $1
+        `,
+        [userId]
+    );
+
+    const user = userResult.rows[0];
+
+    if (!user) {
+        const error = new Error("User not found");
+        error.code = "USER_NOT_FOUND";
+        throw error;
+    }
+
+    if (user.role !== "PATIENT") {
+        const error = new Error(
+            "Only users with PATIENT role can be linked to a patient"
+        );
+
+        error.code = "INVALID_USER_ROLE";
+        throw error;
+    }
+
+    if (!user.isActive) {
+        const error = new Error("User account is inactive");
+        error.code = "USER_INACTIVE";
+        throw error;
+    }
+
+    // Patient already linked
+    if (patient.userId !== null) {
+        if (patient.userId === userId) {
+            return patient;
+        }
+
+        const error = new Error(
+            "Patient is already linked to another user"
+        );
+
+        error.code = "PATIENT_ALREADY_LINKED";
+        throw error;
+    }
+
+    // User already linked to another patient
+    const existingPatientResult = await pool.query(
+        `
+        SELECT id
+        FROM patient
+        WHERE "userId" = $1
+        `,
+        [userId]
+    );
+
+    if (existingPatientResult.rows.length > 0) {
+        const error = new Error(
+            "User is already linked to another patient"
+        );
+
+        error.code = "USER_ALREADY_LINKED";
+        throw error;
+    }
+
+    // Link patient and user
+    const result = await pool.query(
+        `
+        UPDATE patient
+        SET
+            "userId" = $1,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+        `,
+        [userId, patientId]
+    );
+
+    return result.rows[0];
 };

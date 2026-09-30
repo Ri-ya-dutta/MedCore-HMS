@@ -2,7 +2,8 @@ import {
     createPatient,
     getPatientById,
     updatePatient,
-    getPatients
+    getPatients,
+    getPatientByUserId
 } from "../services/patientService.js";
 
 export const createPatientController = async (req, res) => {
@@ -16,8 +17,7 @@ export const createPatientController = async (req, res) => {
             email,
             address,
             emergencyContact,
-            bloodGroup,
-            userId
+            bloodGroup
         } = req.body;
 
         // Required fields
@@ -64,8 +64,7 @@ export const createPatientController = async (req, res) => {
             email,
             address,
             emergencyContact,
-            bloodGroup,
-            userId
+            bloodGroup
         });
 
         return res.status(201).json({
@@ -117,6 +116,29 @@ export const getPatientByIdController = async (req, res) => {
 
         return res.status(500).json({
             message: "Failed to fetch patient"
+        });
+    }
+};
+
+export const getMyPatientProfileController = async (req, res) => {
+    try {
+        const patient = await getPatientByUserId(req.user.id);
+
+        if (!patient) {
+            return res.status(404).json({
+                message: "Patient profile is not linked to this account"
+            });
+        }
+
+        return res.status(200).json(patient);
+    } catch (error) {
+        console.error(
+            "Get my patient profile error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to get patient profile"
         });
     }
 };

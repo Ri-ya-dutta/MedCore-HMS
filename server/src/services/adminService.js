@@ -494,3 +494,106 @@ export const updateDoctor = async (
 
     return result.rows[0];
 };
+
+export const linkPatientToUser = async (
+    patientId,
+    userId
+) => {
+    const patientResult = await pool.query(
+        `
+        SELECT *
+        FROM patient
+        WHERE id = $1
+        `,
+        [patientId]
+    );
+
+    const patient = patientResult.rows[0];
+
+    if (!patient) {
+        const error = new Error("Patient not found");
+        error.code = "PATIENT_NOT_FOUND";
+        throw error;
+    }
+
+    const userResult = await pool.query(
+        `
+        SELECT
+            id,
+            email,
+            role,
+            "isActive"
+        FROM "user"
+        WHERE id = $1
+        `,
+        [userId]
+    );
+
+    const user = userResult.rows[0];
+
+    if (!user) {
+        const error = new Error("User not found");
+        error.code = "USER_NOT_FOUND";
+        throw error;
+    }
+
+    if (user.role !== "PATIENT") {
+        const error = new Error(
+            "Only PATIENT users can be linked to patient records"
+        );
+
+        error.code = "INVALID_USER_ROLE";
+        throw error;
+    }
+
+    if (!user.isActive) {
+        const error = new Error("User account is inactive");
+        error.code = "USER_INACTIVE";
+        throw error;
+    }
+
+    if (patient.userId !== null) {
+        if (patient.userId === userId) {
+            return patient;
+        }
+
+        const error = new Error(
+            "Patient is already linked to another user"
+        );
+
+        error.code = "PATIENT_ALREADY_LINKED";
+        throw error;
+    }
+
+    const existingPatientResult = await pool.query(
+        `
+        SELECT id
+        FROM patient
+        WHERE "userId" = $1
+        `,
+        [userId]
+    );
+
+    if (existingPatientResult.rows.length > 0) {
+        const error = new Error(
+            "User is already linked to another patient"
+        );
+
+        error.code = "USER_ALREADY_LINKED";
+        throw error;
+    }
+
+    const result = await pool.query(
+        `
+        UPDATE patient
+        SET
+            "userId" = $1,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+        `,
+        [userId, patientId]
+    );
+
+    return result.rows[0];
+};

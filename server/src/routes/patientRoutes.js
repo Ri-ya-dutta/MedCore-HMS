@@ -4,7 +4,8 @@ import {
     createPatientController,
     getPatientByIdController,
     updatePatientController,
-    getPatientsController
+    getPatientsController,
+    getMyPatientProfileController
 } from "../controllers/patientController.js";
 
 import {
@@ -27,6 +28,15 @@ router.get(
     authorizeRoles("ADMIN", "RECEPTIONIST", "DOCTOR"),
     getPatientsController
 );
+
+
+router.get(
+    "/me",
+    authenticate,
+    authorizeRoles("PATIENT"),
+    getMyPatientProfileController
+);
+
 
 router.get(
     "/:id",

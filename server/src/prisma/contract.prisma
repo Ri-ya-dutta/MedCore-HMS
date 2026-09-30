@@ -11,6 +11,8 @@ model User {
 
   doctor       Doctor?
   patient      Patient?
+
+   @@map("user")
 }
 
 model Hospital {
@@ -23,6 +25,8 @@ model Hospital {
   updatedAt    TimestamptzString @default(now())
 
   departments  Department[]
+
+   @@map("hospital")
 }
 
 model Department {
@@ -37,6 +41,8 @@ model Department {
 
   createdAt    TimestamptzString @default(now())
   updatedAt    TimestamptzString @default(now())
+
+  @@map("department")
 }
 
 model Doctor {
@@ -58,6 +64,8 @@ model Doctor {
 
   createdAt      TimestamptzString @default(now())
   updatedAt      TimestamptzString @default(now())
+
+  @@map("doctor")
 }
 
 model Patient {
@@ -80,6 +88,8 @@ model Patient {
 
   createdAt         TimestamptzString @default(now())
   updatedAt         TimestamptzString @default(now())
+
+  @@map("patient")
 }
 
 model Appointment {
@@ -98,6 +108,8 @@ model Appointment {
 
   createdAt   TimestamptzString @default(now())
   updatedAt   TimestamptzString @default(now())
+
+  @@map("appointment")
 }
 
 model Encounter {
@@ -121,6 +133,8 @@ model Encounter {
 
   createdAt      TimestamptzString @default(now())
   updatedAt      TimestamptzString @default(now())
+
+  @@map("encounter")
 }
 
 model Vitals {
@@ -135,6 +149,8 @@ model Vitals {
   encounter         Encounter @relation(fields: [encounterId], references: [id])
 
   recordedAt        TimestamptzString @default(now())
+
+  @@map("vitals")
 }
 
 model Prescription {
@@ -147,6 +163,8 @@ model Prescription {
   items          PrescriptionItem[]
 
   createdAt      TimestamptzString @default(now())
+
+  @@map("prescription")
 }
 
 model PrescriptionItem {
@@ -159,6 +177,8 @@ model PrescriptionItem {
 
   prescriptionId Int
   prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+
+  @@map("prescriptionItem")
 }
 
 model LabOrder {
@@ -174,6 +194,8 @@ model LabOrder {
 
   createdAt      TimestamptzString @default(now())
   updatedAt      TimestamptzString @default(now())
+
+  @@map("labOrder")
 }
 
 model LabResult {
@@ -185,6 +207,8 @@ model LabResult {
 
   labOrderId     Int       @unique
   labOrder       LabOrder  @relation(fields: [labOrderId], references: [id])
+
+  @@map("labResult")
 }
 
 model Invoice {
@@ -199,6 +223,8 @@ model Invoice {
 
   createdAt      TimestamptzString @default(now())
   updatedAt      TimestamptzString @default(now())
+
+  @@map("invoice")
 }
 
 model InvoiceItem {
@@ -208,6 +234,8 @@ model InvoiceItem {
 
   invoiceId   Int
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoiceItem")
 }
 
 

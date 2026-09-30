@@ -1,16 +1,21 @@
 import bcrypt from "bcryptjs";
-import { db } from "../prisma/db.ts";
+import { pool } from "../config/db.js";
 
 const SALT_ROUNDS = 12;
 
 export const registerUser = async ({ email, password }) => {
     const normalizedEmail = email.trim().toLowerCase();
 
-    const existingUser = await db.orm.public.User
-        .where({ email: normalizedEmail })
-        .first();
+    const existingUserResult = await pool.query(
+        `
+        SELECT *
+        FROM "user"
+        WHERE email = $1
+        `,
+        [normalizedEmail]
+    );
 
-    if (existingUser) {
+    if (existingUserResult.rows.length > 0) {
         const error = new Error("Email is already registered");
         error.code = "EMAIL_EXISTS";
         throw error;
@@ -18,11 +23,31 @@ export const registerUser = async ({ email, password }) => {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const user = await db.orm.public.User.create({
-        email: normalizedEmail,
-        passwordHash,
-        role: "PATIENT",
-    });
+    const result = await pool.query(
+        `
+        INSERT INTO "user" (
+            email,
+            "passwordHash",
+            role,
+            "isActive"
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING
+            id,
+            email,
+            role,
+            "isActive",
+            "createdAt"
+        `,
+        [
+            normalizedEmail,
+            passwordHash,
+            "PATIENT",
+            true
+        ]
+    );
+
+    const user = result.rows[0];
 
     return {
         id: user.id,
@@ -33,14 +58,19 @@ export const registerUser = async ({ email, password }) => {
     };
 };
 
-
-
 export const loginUser = async ({ email, password }) => {
     const normalizedEmail = email.trim().toLowerCase();
 
-    const user = await db.orm.public.User
-        .where({ email: normalizedEmail })
-        .first();
+    const result = await pool.query(
+        `
+        SELECT *
+        FROM "user"
+        WHERE email = $1
+        `,
+        [normalizedEmail]
+    );
+
+    const user = result.rows[0];
 
     if (!user) {
         const error = new Error("Invalid credentials");

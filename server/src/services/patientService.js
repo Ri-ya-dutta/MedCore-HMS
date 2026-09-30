@@ -1,4 +1,4 @@
-import { db } from "../prisma/db.ts";
+import { pool } from "../config/db.js";
 
 export const createPatient = async ({
     firstName,
@@ -12,28 +12,54 @@ export const createPatient = async ({
     bloodGroup,
     userId
 }) => {
-    const patient = await db.orm.public.Patient.create({
-        firstName,
-        lastName,
-        dateOfBirth: Temporal.Instant.from(`${dateOfBirth}T00:00:00Z`),
-        gender,
-        phone,
-        email: email || null,
-        address: address || null,
-        emergencyContact: emergencyContact || null,
-        bloodGroup: bloodGroup || null,
-        userId: userId || null
-    });
+    const result = await pool.query(
+        `
+        INSERT INTO patient (
+            "firstName",
+            "lastName",
+            "dateOfBirth",
+            gender,
+            phone,
+            email,
+            address,
+            "emergencyContact",
+            "bloodGroup",
+            "userId"
+        )
+        VALUES (
+            $1, $2, ($3 || ' 00:00:00+00')::timestamptz, $4, $5,
+            $6, $7, $8, $9, $10
+        )
+        RETURNING *
+        `,
+        [
+            firstName,
+            lastName,
+            dateOfBirth,
+            gender,
+            phone,
+            email || null,
+            address || null,
+            emergencyContact || null,
+            bloodGroup || null,
+            userId || null
+        ]
+    );
 
-    return patient;
+    return result.rows[0];
 };
 
 export const getPatientById = async (id) => {
-    const patient = await db.orm.public.Patient
-        .where({ id })
-        .first();
+    const result = await pool.query(
+        `
+        SELECT *
+        FROM patient
+        WHERE id = $1
+        `,
+        [id]
+    );
 
-    return patient;
+    return result.rows[0] || null;
 };
 
 export const updatePatient = async (
@@ -50,49 +76,83 @@ export const updatePatient = async (
         bloodGroup
     }
 ) => {
-    const patient = await db.orm.public.Patient
-        .where({ id })
-        .first();
+    const existingResult = await pool.query(
+        `
+        SELECT *
+        FROM patient
+        WHERE id = $1
+        `,
+        [id]
+    );
+
+    const patient = existingResult.rows[0];
 
     if (!patient) {
         return null;
     }
 
-    const updatedPatient = await db.orm.public.Patient.update(
-        { id },
-        {
-            firstName: firstName ?? patient.firstName,
-            lastName: lastName ?? patient.lastName,
-            dateOfBirth: dateOfBirth
-                ? Temporal.Instant.from(`${dateOfBirth}T00:00:00Z`)
-                : patient.dateOfBirth,
-            gender: gender ?? patient.gender,
-            phone: phone ?? patient.phone,
-            email: email ?? patient.email,
-            address: address ?? patient.address,
-            emergencyContact: emergencyContact ?? patient.emergencyContact,
-            bloodGroup: bloodGroup ?? patient.bloodGroup
-        }
+    const result = await pool.query(
+        `
+        UPDATE patient
+        SET
+            "firstName" = $1,
+            "lastName" = $2,
+            "dateOfBirth" = CASE
+                WHEN $3::text IS NULL THEN "dateOfBirth"
+                ELSE ($3::text || ' 00:00:00+00')::timestamptz
+            END,
+            gender = $4,
+            phone = $5,
+            email = $6,
+            address = $7,
+            "emergencyContact" = $8,
+            "bloodGroup" = $9,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $10
+        RETURNING *
+        `,
+        [
+            firstName ?? patient.firstName,
+            lastName ?? patient.lastName,
+            dateOfBirth ?? null,
+            gender ?? patient.gender,
+            phone ?? patient.phone,
+            email ?? patient.email,
+            address ?? patient.address,
+            emergencyContact ?? patient.emergencyContact,
+            bloodGroup ?? patient.bloodGroup,
+            id
+        ]
     );
 
-    return updatedPatient;
+    return result.rows[0];
 };
 
 export const getPatients = async (search) => {
-    const patients = await db.orm.public.Patient.all();
+    let query = `
+        SELECT *
+        FROM patient
+    `;
 
-    if (!search) {
-        return patients;
+    const values = [];
+
+    if (search) {
+        values.push(`%${search.toLowerCase()}%`);
+
+        query += `
+            WHERE
+                LOWER("firstName") LIKE $1
+                OR LOWER("lastName") LIKE $1
+                OR LOWER(phone) LIKE $1
+                OR LOWER(email) LIKE $1
+        `;
     }
 
-    const normalizedSearch = search.toLowerCase();
+    query += `
+        ORDER BY id
+    `;
 
-    return patients.filter((patient) => {
-        return (
-            patient.firstName.toLowerCase().includes(normalizedSearch) ||
-            patient.lastName.toLowerCase().includes(normalizedSearch) ||
-            patient.phone.toLowerCase().includes(normalizedSearch) ||
-            patient.email?.toLowerCase().includes(normalizedSearch)
-        );
-    });
+    const result = await pool.query(query, values);
+
+    return result.rows;
 };

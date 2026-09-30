@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { db } from "../prisma/db.ts";
+import { pool } from "../config/db.js";
 
 /* =========================
    HOSPITAL
@@ -11,16 +12,38 @@ export const createHospital = async ({
     phone,
     email
 }) => {
-    return await db.orm.public.Hospital.create({
-        name,
-        address: address || null,
-        phone: phone || null,
-        email: email || null
-    });
+    const result = await pool.query(
+        `
+        INSERT INTO hospital (
+            name,
+            address,
+            phone,
+            email
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+        `,
+        [
+            name,
+            address ?? null,
+            phone ?? null,
+            email ?? null
+        ]
+    );
+
+    return result.rows[0];
 };
 
 export const getHospitals = async () => {
-    return await db.orm.public.Hospital.all();
+    const result = await pool.query(
+        `
+        SELECT *
+        FROM hospital
+        ORDER BY id
+        `
+    );
+
+    return result.rows;
 };
 
 export const updateHospital = async (
@@ -32,25 +55,44 @@ export const updateHospital = async (
         email
     }
 ) => {
-    const hospital = await db.orm.public.Hospital
-        .where({ id })
-        .first();
+    const existingResult = await pool.query(
+        `
+        SELECT *
+        FROM hospital
+        WHERE id = $1
+        `,
+        [id]
+    );
+
+    const hospital = existingResult.rows[0];
 
     if (!hospital) {
         return null;
     }
 
-    return await db.orm.public.Hospital.update(
-        { id },
-        {
-            name: name ?? hospital.name,
-            address: address ?? hospital.address,
-            phone: phone ?? hospital.phone,
-            email: email ?? hospital.email
-        }
+    const result = await pool.query(
+        `
+        UPDATE hospital
+        SET
+            name = $1,
+            address = $2,
+            phone = $3,
+            email = $4,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $5
+        RETURNING *
+        `,
+        [
+            name ?? hospital.name,
+            address ?? hospital.address,
+            phone ?? hospital.phone,
+            email ?? hospital.email,
+            id
+        ]
     );
-};
 
+    return result.rows[0];
+};
 
 /* =========================
    DEPARTMENT
@@ -61,15 +103,36 @@ export const createDepartment = async ({
     description,
     hospitalId
 }) => {
-    return await db.orm.public.Department.create({
-        name,
-        description: description || null,
-        hospitalId
-    });
+    const result = await pool.query(
+        `
+        INSERT INTO department (
+            name,
+            description,
+            "hospitalId"
+        )
+        VALUES ($1, $2, $3)
+        RETURNING *
+        `,
+        [
+            name,
+            description ?? null,
+            hospitalId
+        ]
+    );
+
+    return result.rows[0];
 };
 
 export const getDepartments = async () => {
-    return await db.orm.public.Department.all();
+    const result = await pool.query(
+        `
+        SELECT *
+        FROM department
+        ORDER BY id
+        `
+    );
+
+    return result.rows;
 };
 
 export const updateDepartment = async (
@@ -80,22 +143,41 @@ export const updateDepartment = async (
         hospitalId
     }
 ) => {
-    const department = await db.orm.public.Department
-        .where({ id })
-        .first();
+    const existingResult = await pool.query(
+        `
+        SELECT *
+        FROM department
+        WHERE id = $1
+        `,
+        [id]
+    );
+
+    const department = existingResult.rows[0];
 
     if (!department) {
         return null;
     }
 
-    return await db.orm.public.Department.update(
-        { id },
-        {
-            name: name ?? department.name,
-            description: description ?? department.description,
-            hospitalId: hospitalId ?? department.hospitalId
-        }
+    const result = await pool.query(
+        `
+        UPDATE department
+        SET
+            name = $1,
+            description = $2,
+            "hospitalId" = $3,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $4
+        RETURNING *
+        `,
+        [
+            name ?? department.name,
+            description ?? department.description,
+            hospitalId ?? department.hospitalId,
+            id
+        ]
     );
+
+    return result.rows[0];
 };
 
 
@@ -110,11 +192,16 @@ export const createUser = async ({
 }) => {
     const normalizedEmail = email.trim().toLowerCase();
 
-    const existingUser = await db.orm.public.User
-        .where({ email: normalizedEmail })
-        .first();
+    const existingUserResult = await pool.query(
+        `
+        SELECT *
+        FROM "user"
+        WHERE email = $1
+        `,
+        [normalizedEmail]
+    );
 
-    if (existingUser) {
+    if (existingUserResult.rows.length > 0) {
         const error = new Error("Email is already registered");
         error.code = "EMAIL_EXISTS";
         throw error;
@@ -122,79 +209,125 @@ export const createUser = async ({
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    return await db.orm.public.User.create({
-        email: normalizedEmail,
-        passwordHash,
-        role,
-        isActive: true
-    });
+    const result = await pool.query(
+        `
+        INSERT INTO "user" (
+            email,
+            "passwordHash",
+            role,
+            "isActive"
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+        `,
+        [
+            normalizedEmail,
+            passwordHash,
+            role,
+            true
+        ]
+    );
+
+    return result.rows[0];
 };
 
 export const getUsers = async () => {
-    const users = await db.orm.public.User.all();
+    const result = await pool.query(
+        `
+        SELECT
+            id,
+            email,
+            role,
+            "isActive",
+            "createdAt",
+            "updatedAt"
+        FROM "user"
+        ORDER BY id
+        `
+    );
 
-    return users.map((user) => ({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-    }));
+    return result.rows;
 };
 
 export const updateUserRole = async (id, role) => {
-    const user = await db.orm.public.User
-        .where({ id })
-        .first();
+    const existingResult = await pool.query(
+        `
+        SELECT *
+        FROM "user"
+        WHERE id = $1
+        `,
+        [id]
+    );
+
+    const user = existingResult.rows[0];
 
     if (!user) {
         return null;
     }
 
-    const updatedUser = await db.orm.public.User.update(
-        { id },
-        {
-            role
-        }
+    const result = await pool.query(
+        `
+        UPDATE "user"
+        SET
+            role = $1,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING
+            id,
+            email,
+            role,
+            "isActive",
+            "createdAt",
+            "updatedAt"
+        `,
+        [
+            role,
+            id
+        ]
     );
 
-    return {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        isActive: updatedUser.isActive,
-        createdAt: updatedUser.createdAt,
-        updatedAt: updatedUser.updatedAt
-    };
+    return result.rows[0];
 };
 
 export const updateUserStatus = async (id, isActive) => {
-    const user = await db.orm.public.User
-        .where({ id })
-        .first();
+    const existingResult = await pool.query(
+        `
+        SELECT *
+        FROM "user"
+        WHERE id = $1
+        `,
+        [id]
+    );
+
+    const user = existingResult.rows[0];
 
     if (!user) {
         return null;
     }
 
-    const updatedUser = await db.orm.public.User.update(
-        { id },
-        {
-            isActive
-        }
+    const result = await pool.query(
+        `
+        UPDATE "user"
+        SET
+            "isActive" = $1,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING
+            id,
+            email,
+            role,
+            "isActive",
+            "createdAt",
+            "updatedAt"
+        `,
+        [
+            isActive,
+            id
+        ]
     );
 
-    return {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        isActive: updatedUser.isActive,
-        createdAt: updatedUser.createdAt,
-        updatedAt: updatedUser.updatedAt
-    };
+    return result.rows[0];
 };
-
 
 /* =========================
    DOCTORS
@@ -209,9 +342,16 @@ export const createDoctor = async ({
     userId,
     departmentId
 }) => {
-    const user = await db.orm.public.User
-        .where({ id: userId })
-        .first();
+    const userResult = await pool.query(
+        `
+        SELECT *
+        FROM "user"
+        WHERE id = $1
+        `,
+        [userId]
+    );
+
+    const user = userResult.rows[0];
 
     if (!user) {
         const error = new Error("User not found");
@@ -225,9 +365,16 @@ export const createDoctor = async ({
         throw error;
     }
 
-    const department = await db.orm.public.Department
-        .where({ id: departmentId })
-        .first();
+    const departmentResult = await pool.query(
+        `
+        SELECT *
+        FROM department
+        WHERE id = $1
+        `,
+        [departmentId]
+    );
+
+    const department = departmentResult.rows[0];
 
     if (!department) {
         const error = new Error("Department not found");
@@ -235,19 +382,44 @@ export const createDoctor = async ({
         throw error;
     }
 
-    return await db.orm.public.Doctor.create({
-        firstName,
-        lastName,
-        specialization,
-        phone: phone || null,
-        licenseNumber,
-        userId,
-        departmentId
-    });
+    const result = await pool.query(
+        `
+        INSERT INTO doctor (
+            "firstName",
+            "lastName",
+            specialization,
+            phone,
+            "licenseNumber",
+            "userId",
+            "departmentId"
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+        `,
+        [
+            firstName,
+            lastName,
+            specialization,
+            phone ?? null,
+            licenseNumber,
+            userId,
+            departmentId
+        ]
+    );
+
+    return result.rows[0];
 };
 
 export const getDoctors = async () => {
-    return await db.orm.public.Doctor.all();
+    const result = await pool.query(
+        `
+        SELECT *
+        FROM doctor
+        ORDER BY id
+        `
+    );
+
+    return result.rows;
 };
 
 export const updateDoctor = async (
@@ -261,18 +433,32 @@ export const updateDoctor = async (
         departmentId
     }
 ) => {
-    const doctor = await db.orm.public.Doctor
-        .where({ id })
-        .first();
+    const existingResult = await pool.query(
+        `
+        SELECT *
+        FROM doctor
+        WHERE id = $1
+        `,
+        [id]
+    );
+
+    const doctor = existingResult.rows[0];
 
     if (!doctor) {
         return null;
     }
 
     if (departmentId !== undefined) {
-        const department = await db.orm.public.Department
-            .where({ id: departmentId })
-            .first();
+        const departmentResult = await pool.query(
+            `
+            SELECT *
+            FROM department
+            WHERE id = $1
+            `,
+            [departmentId]
+        );
+
+        const department = departmentResult.rows[0];
 
         if (!department) {
             const error = new Error("Department not found");
@@ -281,15 +467,30 @@ export const updateDoctor = async (
         }
     }
 
-    return await db.orm.public.Doctor.update(
-        { id },
-        {
-            firstName: firstName ?? doctor.firstName,
-            lastName: lastName ?? doctor.lastName,
-            specialization: specialization ?? doctor.specialization,
-            phone: phone ?? doctor.phone,
-            licenseNumber: licenseNumber ?? doctor.licenseNumber,
-            departmentId: departmentId ?? doctor.departmentId
-        }
+    const result = await pool.query(
+        `
+        UPDATE doctor
+        SET
+            "firstName" = $1,
+            "lastName" = $2,
+            specialization = $3,
+            phone = $4,
+            "licenseNumber" = $5,
+            "departmentId" = $6,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = $7
+        RETURNING *
+        `,
+        [
+            firstName ?? doctor.firstName,
+            lastName ?? doctor.lastName,
+            specialization ?? doctor.specialization,
+            phone ?? doctor.phone,
+            licenseNumber ?? doctor.licenseNumber,
+            departmentId ?? doctor.departmentId,
+            id
+        ]
     );
+
+    return result.rows[0];
 };

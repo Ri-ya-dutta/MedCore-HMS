@@ -5,13 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "contract:emit": "prisma contract emit"
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "type": "module",
   "dependencies": {
-    "@prisma/orm-postgres": "^8.0.0-rc.13",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -20,9 +18,7 @@
     "temporal-polyfill": "^1.0.5"
   },
   "devDependencies": {
-    "@prisma/cli-engine": "^0.4.0",
     "@types/node": "^26.5.1",
-    "nodemon": "^3.1.14",
-    "prisma": "^8.0.0-rc.17"
+    "nodemon": "^3.1.14"
   }
 }

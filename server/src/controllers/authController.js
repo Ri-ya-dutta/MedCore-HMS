@@ -4,7 +4,7 @@ import {
 } from "../services/authService.js";
 
  import { generateToken } from "../utils/jwt.js";
- import { db } from "../prisma/db.ts";
+ import { pool } from "../config/db.js";
 
 export const register = async (req, res) => {
     try {
@@ -111,9 +111,21 @@ export const login = async (req, res) => {
 
 export const getMe = async (req, res) => {
     try {
-        const user = await db.orm.public.User
-            .where({ id: req.user.id })
-            .first();
+        const result = await pool.query(
+            `
+            SELECT
+                id,
+                email,
+                role,
+                "isActive",
+                "createdAt"
+            FROM "user"
+            WHERE id = $1
+            `,
+            [req.user.id]
+        );
+
+        const user = result.rows[0];
 
         if (!user) {
             return res.status(404).json({

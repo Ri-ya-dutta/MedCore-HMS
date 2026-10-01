@@ -1,4 +1,4 @@
-import { db } from "../prisma/db.ts";
+import { pool } from "../config/db.js";
 
 import {
     createHospital,
@@ -162,9 +162,16 @@ export const createDepartmentController = async (req, res) => {
             });
         }
 
-        const hospital = await db.orm.public.Hospital
-            .where({ id: parsedHospitalId })
-            .first();
+        const hospitalResult = await pool.query(
+            `
+            SELECT *
+            FROM hospital
+            WHERE id = $1
+            `,
+            [parsedHospitalId]
+        );
+
+const hospital = hospitalResult.rows[0];
 
         if (!hospital) {
             return res.status(404).json({
@@ -244,9 +251,16 @@ export const updateDepartmentController = async (req, res) => {
                 });
             }
 
-            const hospital = await db.orm.public.Hospital
-                .where({ id: parsedHospitalId })
-                .first();
+            const hospitalResult = await pool.query(
+                `
+                SELECT *
+                FROM hospital
+                WHERE id = $1
+                `,
+                [parsedHospitalId]
+            );
+
+            const hospital = hospitalResult.rows[0];
 
             if (!hospital) {
                 return res.status(404).json({

@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import { db } from "../prisma/db.ts";
 import { pool } from "../config/db.js";
 
 /* =========================

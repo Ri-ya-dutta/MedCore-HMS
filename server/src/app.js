@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 
 import { pool } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -7,6 +8,12 @@ import adminRoutes from "./routes/adminRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 
 const app = express();
+
+app.use(
+    cors({
+        origin: true
+    })
+);
 
 app.use(express.json());
 
@@ -21,17 +28,21 @@ app.get("/", (req, res) => {
     });
 });
 
-
 app.get("/pg-test", async (req, res) => {
     try {
-        const result = await pool.query("SELECT 1 AS connected");
+        const result = await pool.query(
+            "SELECT 1 AS connected"
+        );
 
         res.json({
             message: "PostgreSQL connection successful!",
             result: result.rows
         });
     } catch (error) {
-        console.error("PostgreSQL connection failed:", error);
+        console.error(
+            "PostgreSQL connection failed:",
+            error
+        );
 
         res.status(500).json({
             message: "PostgreSQL connection failed"

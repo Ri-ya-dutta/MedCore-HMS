@@ -9,6 +9,7 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 import encounterRoutes from "./routes/encounterRoutes.js";
 import vitalsRoutes from "./routes/vitalsRoutes.js";
 import prescriptionRoutes from "./routes/prescriptionRoutes.js";
+import labRoutes from "./routes/labRoutes.js";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/encounters", encounterRoutes);
 app.use("/api/encounters", vitalsRoutes);
 app.use("/api/encounters", prescriptionRoutes);
+app.use("/api/encounters", labRoutes);
 
 app.get("/", (req, res) => {
     res.json({

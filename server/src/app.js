@@ -10,6 +10,7 @@ import encounterRoutes from "./routes/encounterRoutes.js";
 import vitalsRoutes from "./routes/vitalsRoutes.js";
 import prescriptionRoutes from "./routes/prescriptionRoutes.js";
 import labRoutes from "./routes/labRoutes.js";
+import invoiceRoutes from "./routes/invoiceRoutes.js";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/encounters", encounterRoutes);
 app.use("/api/encounters", vitalsRoutes);
 app.use("/api/encounters", prescriptionRoutes);
 app.use("/api/encounters", labRoutes);
+app.use("/api/encounters", invoiceRoutes);
 
 app.get("/", (req, res) => {
     res.json({

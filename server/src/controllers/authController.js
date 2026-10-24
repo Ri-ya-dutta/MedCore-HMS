@@ -6,51 +6,156 @@ import {
  import { generateToken } from "../utils/jwt.js";
  import { pool } from "../config/db.js";
 
+
 export const register = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const {
+            email,
+            password,
+            firstName,
+            lastName,
+            dateOfBirth,
+            gender,
+            phone,
+            address,
+            emergencyContact,
+            bloodGroup
+        } = req.body ?? {};
 
-        if (!email || !password) {
+        const requiredFields = [
+            email,
+            password,
+            firstName,
+            lastName,
+            dateOfBirth,
+            gender,
+            phone
+        ];
+
+        if (
+            requiredFields.some(
+                value => typeof value !== "string"
+            )
+        ) {
             return res.status(400).json({
-                message: "Email and password are required",
+                message: "All required fields must be strings"
             });
         }
 
-        if (typeof email !== "string" || typeof password !== "string") {
+        if (
+            requiredFields.some(
+                value => value.trim().length === 0
+            )
+        ) {
             return res.status(400).json({
-                message: "Email and password must be strings",
+                message:
+                    "Email, password, first name, last name, date of birth, gender and phone are required"
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+        ) {
+            return res.status(400).json({
+                message: "Invalid email address"
             });
         }
 
         if (password.length < 8) {
             return res.status(400).json({
-                message: "Password must be at least 8 characters long",
+                message:
+                    "Password must be at least 8 characters long"
             });
         }
 
-        const user = await registerUser({
-            email,
+        const optionalFields = [
+            address,
+            emergencyContact,
+            bloodGroup
+        ];
+
+        if (
+            optionalFields.some(
+                value =>
+                    value !== undefined &&
+                    value !== null &&
+                    typeof value !== "string"
+            )
+        ) {
+            return res.status(400).json({
+                message:
+                    "Address, emergency contact and blood group must be strings"
+            });
+        }
+
+        const normalizedGender = gender.trim().toUpperCase();
+        const allowedGenders = [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+        ];
+
+        if (!allowedGenders.includes(normalizedGender)) {
+            return res.status(400).json({
+                message: "Invalid gender"
+            });
+        }
+
+        const normalizedDateOfBirth = dateOfBirth.trim();
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        const parsedDate = new Date(
+            `${normalizedDateOfBirth}T00:00:00.000Z`
+        );
+
+        if (
+            !datePattern.test(normalizedDateOfBirth) ||
+            Number.isNaN(parsedDate.getTime()) ||
+            parsedDate.toISOString().slice(0, 10) !==
+                normalizedDateOfBirth ||
+            normalizedDateOfBirth >
+                new Date().toISOString().slice(0, 10)
+        ) {
+            return res.status(400).json({
+                message:
+                    "Date of birth must be a valid date in YYYY-MM-DD format and cannot be in the future"
+            });
+        }
+
+        const { user, patient } = await registerUser({
+            email: normalizedEmail,
             password,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            dateOfBirth: normalizedDateOfBirth,
+            gender: normalizedGender,
+            phone: phone.trim(),
+            address,
+            emergencyContact,
+            bloodGroup
         });
 
         return res.status(201).json({
             message: "Registration successful",
             user,
+            patient
         });
     } catch (error) {
         console.error("Registration error:", error);
 
         if (error.code === "EMAIL_EXISTS") {
             return res.status(409).json({
-                message: "Email is already registered",
+                message: "Email is already registered"
             });
         }
 
         return res.status(500).json({
-            message: "Registration failed",
+            message: "Registration failed"
         });
     }
 };
+
 
 
 
